@@ -172,6 +172,30 @@ MVPでは、1プレイ3〜5分程度を想定します。
 
 まずは「テキストだけでも面白い」状態を作ります。
 
+### 実装済みMVP構成
+
+Phase 1 MVPは、Next.jsの画面とAPI Routes、AWS Lambda向けハンドラ、Bedrock呼び出し、DynamoDB保存を同じサービス層で扱う構成です。
+
+ローカル開発では `AI_PROVIDER=mock` と `STORAGE_PROVIDER=memory` を使うことで、AWS認証情報なしでゲーム体験と自動テストを確認できます。AWS環境では `AI_PROVIDER=bedrock`、`STORAGE_PROVIDER=dynamodb`、`GAME_SESSIONS_TABLE`、`BEDROCK_MODEL_ID` を設定します。
+
+初回のローカルMock検証ではサプライチェーン検査の対象を小さくするため、AWS SDK依存はまだ `package.json` に含めていません。Bedrock / DynamoDBの実接続フェーズで、`@aws-sdk/client-bedrock-runtime`、`@aws-sdk/client-dynamodb`、`@aws-sdk/lib-dynamodb` を追加します。
+
+APIは以下の3つです。
+
+- `POST /api/game/start`: お題を生成し、匿名の `sessionId` と `scenario` を返す
+- `POST /api/game/submit`: `sessionId` と言い訳を受け取り、3名のAI審査員評価、最終判定、保存済み結果を返す
+- `GET /api/game/{sessionId}`: 完了済みのプレイログを取得する
+
+MVPの固定ルールは以下です。
+
+- AI審査員は、検察官AI、弁護人AI、民衆AIの3名
+- 評価軸は、説得力、面白さ、誠実さ、リスク回避力、整合性の5軸
+- 各評価軸は20点満点、総合スコアは100点満点
+- 1プレイのBedrock呼び出しは、お題生成1回、審査員評価3回、最終判定1回の最大5回を基本にする
+- Step Functions、AppSync Events / WebSocket、SQS FIFO、画像生成、音声生成、認証、ランキングはPhase 2以降に回す
+
+AWS用の最小構成は `infra/template.yaml` にSAMテンプレートとして配置しています。DynamoDBにはGameSession単位で、お題、言い訳、AIコメント、評価軸別スコア、総合判定、実行時刻、30日TTLを保存します。
+
 ---
 
 ## 8. 最終アーキテクチャ方針

@@ -3,3 +3,13 @@ temp/
 .Claude/
 .codex/
 .agents/
+node_modules/
+.next/
+out/
+coverage/
+.npm-cache/
+.playwright-cli/
+.next-dev.*.log
+tsconfig.tsbuildinfo
+.env
+.env*.local
