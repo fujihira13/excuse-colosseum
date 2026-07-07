@@ -6,9 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "tsc --noEmit --incremental false",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sam:validate": "sam validate -t infra/template.yaml",
+    "sam:build": "sam build -t infra/template.yaml"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1080.0",
+    "@aws-sdk/client-dynamodb": "^3.1080.0",
+    "@aws-sdk/lib-dynamodb": "^3.1080.0",
     "next": "16.2.9",
     "react": "18.3.1",
     "react-dom": "18.3.1"
@@ -21,6 +26,7 @@
     "@types/node": "^20.14.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.28.1",
     "typescript": "^5.5.4",
     "vitest": "4.1.9"
   }

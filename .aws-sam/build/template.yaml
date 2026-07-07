@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Iiwake Colosseum MVP API
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 35
+    MemorySize: 512
+    Environment:
+      Variables:
+        AI_PROVIDER: bedrock
+        STORAGE_PROVIDER: dynamodb
+        GAME_SESSIONS_TABLE:
+          Ref: GameSessionsTable
+        PLAY_LOG_TTL_DAYS: '30'
+        BEDROCK_MODEL_ID:
+          Ref: BedrockModelId
+        BEDROCK_TEMPERATURE: '0.8'
+        BEDROCK_MAX_TOKENS: '1200'
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-haiku-4-5-20251001-v1:0
+    Description: Bedrock model ID used for scenario, judge, and final judgement generation.
+Resources:
+  GameApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+        - POST
+        - GET
+        AllowHeaders:
+        - content-type
+        AllowOrigins:
+        - http://localhost:3000
+  GameSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: sessionId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: sessionId
+        KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+  StartGameFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: StartGameFunction
+      Handler: handlers.startGameHandler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: GameSessionsTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        StartGame:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: GameApi
+            Path: /api/game/start
+            Method: POST
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - src/lambda/handlers.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2022
+      SamResourceId: StartGameFunction
+  SubmitExcuseFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: SubmitExcuseFunction
+      Handler: handlers.submitExcuseHandler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: GameSessionsTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:InvokeModel
+          Resource: '*'
+      Events:
+        SubmitExcuse:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: GameApi
+            Path: /api/game/submit
+            Method: POST
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - src/lambda/handlers.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2022
+      SamResourceId: SubmitExcuseFunction
+  GetGameFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: GetGameFunction
+      Handler: handlers.getGameHandler
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: GameSessionsTable
+      Events:
+        GetGame:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: GameApi
+            Path: /api/game/{sessionId}
+            Method: GET
+      Environment:
+        Variables:
+          NODE_OPTIONS: ' --enable-source-maps'
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - src/lambda/handlers.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2022
+      SamResourceId: GetGameFunction
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API endpoint
+    Value:
+      Fn::Sub: https://${GameApi}.execute-api.${AWS::Region}.amazonaws.com

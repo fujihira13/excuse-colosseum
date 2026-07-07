@@ -20,6 +20,7 @@ Globals:
 Parameters:
   BedrockModelId:
     Type: String
+    Default: anthropic.claude-haiku-4-5-20251001-v1:0
     Description: Bedrock model ID used for scenario, judge, and final judgement generation.
 
 Resources:
@@ -52,6 +53,7 @@ Resources:
   StartGameFunction:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: ../
       Handler: src/lambda/handlers.startGameHandler
       Policies:
         - DynamoDBCrudPolicy:
@@ -80,6 +82,7 @@ Resources:
   SubmitExcuseFunction:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: ../
       Handler: src/lambda/handlers.submitExcuseHandler
       Policies:
         - DynamoDBCrudPolicy:
@@ -108,6 +111,7 @@ Resources:
   GetGameFunction:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: ../
       Handler: src/lambda/handlers.getGameHandler
       Policies:
         - DynamoDBReadPolicy:
