@@ -9,6 +9,7 @@ out/
 coverage/
 .npm-cache/
 .playwright-cli/
+.aws-sam/
 .next-dev.*.log
 tsconfig.tsbuildinfo
 .env
