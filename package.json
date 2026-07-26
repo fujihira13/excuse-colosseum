@@ -12,14 +12,16 @@
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1080.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1095.0",
     "@aws-sdk/client-dynamodb": "^3.1080.0",
     "@aws-sdk/lib-dynamodb": "^3.1080.0",
-    "next": "16.2.9",
+    "next": "^16.2.12",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "overrides": {
-    "postcss": "8.5.16"
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",

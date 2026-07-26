@@ -22,11 +22,64 @@ Parameters:
     Type: String
     Default: anthropic.claude-haiku-4-5-20251001-v1:0
     Description: Bedrock model ID used for scenario, judge, and final judgement generation.
+  FrontendOrigin:
+    Type: String
+    Default: http://localhost:3000
+    Description: Browser origin allowed to call the HTTP API.
 
 Resources:
+  DemoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-users"
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  DemoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "${AWS::StackName}-web-client"
+      UserPoolId: !Ref DemoUserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 7
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
   GameApi:
     Type: AWS::Serverless::HttpApi
     Properties:
+      Auth:
+        DefaultAuthorizer: CognitoJwtAuthorizer
+        Authorizers:
+          CognitoJwtAuthorizer:
+            JwtConfiguration:
+              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${DemoUserPool}"
+              audience:
+                - !Ref DemoUserPoolClient
+            IdentitySource: "$request.header.Authorization"
       DefaultRouteSettings:
         ThrottlingBurstLimit: 5
         ThrottlingRateLimit: 2
@@ -36,8 +89,9 @@ Resources:
           - GET
         AllowHeaders:
           - content-type
+          - authorization
         AllowOrigins:
-          - http://localhost:3000
+          - !Ref FrontendOrigin
 
   GameSessionsTable:
     Type: AWS::DynamoDB::Table
@@ -160,3 +214,12 @@ Outputs:
   ApiEndpoint:
     Description: HTTP API endpoint
     Value: !Sub "https://${GameApi}.execute-api.${AWS::Region}.amazonaws.com"
+  CognitoUserPoolId:
+    Description: Cognito user pool ID for demo users
+    Value: !Ref DemoUserPool
+  CognitoUserPoolClientId:
+    Description: Cognito app client ID used by the web app
+    Value: !Ref DemoUserPoolClient
+  AwsRegion:
+    Description: AWS region for frontend configuration
+    Value: !Ref AWS::Region

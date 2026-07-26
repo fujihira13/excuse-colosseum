@@ -186,6 +186,14 @@ APIは以下の3つです。
 - `POST /api/game/submit`: `sessionId` と言い訳を受け取り、3名のAI審査員評価、最終判定、保存済み結果を返す
 - `GET /api/game/{sessionId}`: 完了済みのプレイログを取得する
 
+AWS公開時のAPIは、Amazon CognitoとAPI Gateway JWT Authorizerで認証必須にします。ポートフォリオ用途では新規登録は開放せず、Cognito User Poolにデモユーザーを手動作成し、応募先・面接官にのみ個別共有します。これにより、API GatewayのURLを知っているだけではLambdaやBedrockを呼べない構成にします。
+
+フロントエンドを公開環境で動かす場合は、以下の公開環境変数を設定します。
+
+- `NEXT_PUBLIC_API_BASE_URL`: SAMデプロイ後に出力されるAPI GatewayのURL
+- `NEXT_PUBLIC_COGNITO_CLIENT_ID`: SAMデプロイ後に出力されるCognito App Client ID
+- `NEXT_PUBLIC_AWS_REGION`: AWSリージョン（例: `ap-northeast-1`）
+
 MVPの固定ルールは以下です。
 
 - AI審査員は、検察官AI、弁護人AI、民衆AIの3名
