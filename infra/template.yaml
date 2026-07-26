@@ -20,7 +20,7 @@ Globals:
 Parameters:
   BedrockModelId:
     Type: String
-    Default: anthropic.claude-haiku-4-5-20251001-v1:0
+    Default: jp.anthropic.claude-haiku-4-5-20251001-v1:0
     Description: Bedrock model ID used for scenario, judge, and final judgement generation.
   FrontendOrigin:
     Type: String
@@ -112,7 +112,6 @@ Resources:
     Properties:
       CodeUri: ../
       Handler: src/lambda/handlers.startGameHandler
-      ReservedConcurrentExecutions: 2
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GameSessionsTable
@@ -142,7 +141,6 @@ Resources:
     Properties:
       CodeUri: ../
       Handler: src/lambda/handlers.submitExcuseHandler
-      ReservedConcurrentExecutions: 2
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GameSessionsTable
@@ -172,7 +170,6 @@ Resources:
     Properties:
       CodeUri: ../
       Handler: src/lambda/handlers.getGameHandler
-      ReservedConcurrentExecutions: 2
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref GameSessionsTable

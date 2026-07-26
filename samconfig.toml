@@ -1,0 +1,14 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "iiwake-colosseum-dev"
+resolve_s3 = true
+s3_prefix = "iiwake-colosseum-dev"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "BedrockModelId=\"jp.anthropic.claude-haiku-4-5-20251001-v1:0\" FrontendOrigin=\"http://localhost:3000\""
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-northeast-1"

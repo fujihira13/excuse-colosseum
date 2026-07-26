@@ -52,7 +52,7 @@ afterEach(() => {
 describe("BedrockTextClient", () => {
   it("reads Bedrock environment settings and returns text output", async () => {
     process.env.AWS_REGION = "ap-northeast-1";
-    process.env.BEDROCK_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0";
+    process.env.BEDROCK_MODEL_ID = "jp.anthropic.claude-haiku-4-5-20251001-v1:0";
     process.env.BEDROCK_TEMPERATURE = "0.4";
     process.env.BEDROCK_MAX_TOKENS = "321";
 
@@ -66,9 +66,9 @@ describe("BedrockTextClient", () => {
 
     expect(text).toBe("{\"ok\":true}");
     expect(client.region).toBe("ap-northeast-1");
-    expect(client.modelId).toBe("anthropic.claude-haiku-4-5-20251001-v1:0");
+    expect(client.modelId).toBe("jp.anthropic.claude-haiku-4-5-20251001-v1:0");
     expect(fakeRuntime.command?.input).toMatchObject({
-      modelId: "anthropic.claude-haiku-4-5-20251001-v1:0",
+      modelId: "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
       system: [{ text: "system prompt" }],
       messages: [{ role: "user", content: [{ text: "user prompt" }] }],
       inferenceConfig: {
@@ -83,7 +83,7 @@ describe("BedrockTextClient", () => {
 
     const client = new BedrockTextClient(new FakeBedrockRuntime());
 
-    expect(client.modelId).toBe("anthropic.claude-haiku-4-5-20251001-v1:0");
+    expect(client.modelId).toBe("jp.anthropic.claude-haiku-4-5-20251001-v1:0");
   });
 });
 

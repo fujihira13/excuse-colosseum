@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandOutput } fro
 import type { AiTextClient, GenerateTextRequest } from "./textClient";
 
 const defaultRegion = "ap-northeast-1";
-const defaultModelId = "anthropic.claude-haiku-4-5-20251001-v1:0";
+const defaultModelId = "jp.anthropic.claude-haiku-4-5-20251001-v1:0";
 const defaultTemperature = 0.8;
 const defaultMaxTokens = 1200;
 
