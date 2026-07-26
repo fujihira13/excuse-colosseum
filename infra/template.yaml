@@ -27,6 +27,9 @@ Resources:
   GameApi:
     Type: AWS::Serverless::HttpApi
     Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 5
+        ThrottlingRateLimit: 2
       CorsConfiguration:
         AllowMethods:
           - POST
@@ -55,6 +58,7 @@ Resources:
     Properties:
       CodeUri: ../
       Handler: src/lambda/handlers.startGameHandler
+      ReservedConcurrentExecutions: 2
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GameSessionsTable
@@ -84,6 +88,7 @@ Resources:
     Properties:
       CodeUri: ../
       Handler: src/lambda/handlers.submitExcuseHandler
+      ReservedConcurrentExecutions: 2
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref GameSessionsTable
@@ -113,6 +118,7 @@ Resources:
     Properties:
       CodeUri: ../
       Handler: src/lambda/handlers.getGameHandler
+      ReservedConcurrentExecutions: 2
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref GameSessionsTable
@@ -131,6 +137,24 @@ Resources:
         Sourcemap: true
         EntryPoints:
           - src/lambda/handlers.ts
+
+  StartGameFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StartGameFunction}"
+      RetentionInDays: 7
+
+  SubmitExcuseFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${SubmitExcuseFunction}"
+      RetentionInDays: 7
+
+  GetGameFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GetGameFunction}"
+      RetentionInDays: 7
 
 Outputs:
   ApiEndpoint:
