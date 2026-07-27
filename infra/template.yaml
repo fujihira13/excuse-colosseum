@@ -4,7 +4,7 @@ Description: Iiwake Colosseum MVP API
 
 Globals:
   Function:
-    Runtime: nodejs20.x
+    Runtime: nodejs24.x
     Timeout: 35
     MemorySize: 512
     Environment:
@@ -12,7 +12,8 @@ Globals:
         AI_PROVIDER: bedrock
         STORAGE_PROVIDER: dynamodb
         GAME_SESSIONS_TABLE: !Ref GameSessionsTable
-        PLAY_LOG_TTL_DAYS: "30"
+        PLAY_LOG_TTL_DAYS: "1"
+        PLAY_LIMIT_PER_DAY: "20"
         BEDROCK_MODEL_ID: !Ref BedrockModelId
         BEDROCK_TEMPERATURE: "0.8"
         BEDROCK_MAX_TOKENS: "1200"

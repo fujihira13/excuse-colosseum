@@ -7,7 +7,7 @@
     "build": "next build",
     "lint": "tsc --noEmit --incremental false",
     "test": "vitest run",
-    "sam:validate": "sam validate -t infra/template.yaml",
+    "sam:validate": "sam validate -t infra/template.yaml --region ap-northeast-1 --lint",
     "sam:build": "sam build -t infra/template.yaml"
   },
   "dependencies": {

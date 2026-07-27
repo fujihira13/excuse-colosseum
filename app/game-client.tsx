@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   clearAuthSession,
@@ -141,25 +142,30 @@ export function GameClient() {
     setExcuse("");
     setScreen("judging");
 
-    const response = await fetch(apiUrl("/api/game/start"), {
-      method: "POST",
-      headers: requestHeaders()
-    });
+    try {
+      const response = await fetch(apiUrl("/api/game/start"), {
+        method: "POST",
+        headers: requestHeaders()
+      });
 
-    const body = (await response.json()) as StartResponse | { error: string };
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        handleUnauthorized();
+      const body = (await response.json()) as StartResponse | { error: string };
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          handleUnauthorized();
+        }
+        setScreen("idle");
+        setError("error" in body ? body.error : "お題の生成に失敗しました。");
+        return;
       }
-      setScreen("idle");
-      setError("error" in body ? body.error : "お題の生成に失敗しました。");
-      return;
-    }
 
-    const start = body as StartResponse;
-    setSessionId(start.sessionId);
-    setScenario(start.scenario);
-    setScreen("scenario");
+      const start = body as StartResponse;
+      setSessionId(start.sessionId);
+      setScenario(start.scenario);
+      setScreen("scenario");
+    } catch {
+      setScreen("idle");
+      setError("通信に失敗しました。時間をおいて、もう一度お試しください。");
+    }
   }
 
   async function submitExcuse() {
@@ -171,26 +177,31 @@ export function GameClient() {
     setError("");
     setScreen("judging");
 
-    const response = await fetch(apiUrl("/api/game/submit"), {
-      method: "POST",
-      headers: requestHeaders({
-        "Content-Type": "application/json"
-      }),
-      body: JSON.stringify({ sessionId, excuse })
-    });
+    try {
+      const response = await fetch(apiUrl("/api/game/submit"), {
+        method: "POST",
+        headers: requestHeaders({
+          "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({ sessionId, excuse })
+      });
 
-    const body = (await response.json()) as SubmitResponse | { error: string };
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        handleUnauthorized();
+      const body = (await response.json()) as SubmitResponse | { error: string };
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          handleUnauthorized();
+        }
+        setScreen("scenario");
+        setError("error" in body ? body.error : "審査に失敗しました。");
+        return;
       }
-      setScreen("scenario");
-      setError("error" in body ? body.error : "審査に失敗しました。");
-      return;
-    }
 
-    setResult((body as SubmitResponse).result);
-    setScreen("result");
+      setResult((body as SubmitResponse).result);
+      setScreen("result");
+    } catch {
+      setScreen("scenario");
+      setError("通信に失敗しました。時間をおいて、もう一度お試しください。");
+    }
   }
 
   if (!authReady) {
@@ -210,10 +221,12 @@ export function GameClient() {
     return (
       <main className="arena-shell">
         <section className="arena-stage auth-stage" aria-live="polite">
+          <Link className="site-back-link" href="/">
+            ← 作品紹介へ戻る
+          </Link>
           <div className="brand-strip">
             <img className="arena-mark" src="/arena-glyph.svg" alt="" />
             <div>
-              <p className="kicker">認証が必要です</p>
               <h1>言い訳コロシアム</h1>
             </div>
           </div>
@@ -253,17 +266,18 @@ export function GameClient() {
   return (
     <main className="arena-shell">
       <section className="arena-stage" aria-live="polite">
+        <Link className="site-back-link" href="/">
+          ← 作品紹介へ戻る
+        </Link>
         <div className="brand-strip">
           <img className="arena-mark" src="/arena-glyph.svg" alt="" />
           <div>
-            <p className="kicker">AI審判団、開廷</p>
             <h1>言い訳コロシアム</h1>
           </div>
         </div>
 
         {authEnabled ? (
           <div className="session-strip">
-            <span>{authSession?.email}</span>
             <button className="secondary-action compact" type="button" onClick={handleSignOut}>
               ログアウト
             </button>
@@ -273,7 +287,6 @@ export function GameClient() {
         {screen === "idle" ? (
           <div className="start-grid">
             <div className="court-callout">
-              <p className="label">今日の被告席</p>
               <p className="large-copy">理不尽な事件に、言葉だけで勝つ。</p>
             </div>
             <button className="primary-action" type="button" onClick={startGame}>
