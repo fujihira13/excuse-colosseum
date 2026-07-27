@@ -8,7 +8,8 @@
     "lint": "tsc --noEmit --incremental false",
     "test": "vitest run",
     "sam:validate": "sam validate -t infra/template.yaml --region ap-northeast-1 --lint",
-    "sam:build": "sam build -t infra/template.yaml"
+    "sam:build": "sam build -t infra/template.yaml",
+    "architecture:generate": "node scripts/generate-architecture-diagrams.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1080.0",
@@ -29,6 +30,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "esbuild": "^0.28.1",
+    "sharp": "^0.35.3",
     "typescript": "^5.5.4",
     "vitest": "4.1.9"
   }

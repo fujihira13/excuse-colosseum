@@ -1,565 +1,160 @@
-# 企画書：言い訳コロシアム
+# 言い訳コロシアム
 
-## 1. 企画概要
+> その言い訳、AI審判団を納得させられるか。
 
-**言い訳コロシアム**は、AIが生成する理不尽な事件・奇妙な世界線・無茶な状況に対して、プレイヤーが「言い訳」「弁明」「交渉」「謝罪」を行い、複数のAI審査員がリアルタイムに評価・議論するAI対話型ゲームです。
+AIが生成する理不尽なお題に対して、プレイヤーが自分の言葉で弁明し、3人のAI審査員から評価を受ける1人用テキストゲームです。
 
-プレイヤーは、説得力、面白さ、誠実さ、リスク回避力、感情コントロールなどの観点で高得点を狙います。
+AWSとAmazon Bedrockを実際に使って生成AIアプリケーションの処理構成を学ぶことを目的に開発しました。本リポジトリは現在のテキストゲームを完成スコープとし、追加機能の拡張は予定していません。
 
-本企画は、単なるチャットゲームではなく、以下の技術要素を組み合わせたAWS学習用ポートフォリオとして構築します。
+## ゲームの流れ
 
-- Amazon Bedrockによるテキスト生成・AI審査員の対話生成
-- AWS Step Functionsによるゲーム進行ワークフロー
-- DynamoDBによるゲーム状態・スコア・会話履歴管理
-- AppSync EventsまたはWebSocketによるリアルタイム配信
-- SQS FIFOによるAI審査員の発言順制御
-- EKS GPU上のOSS生成モデルによるTTS、画像、BGM、演出生成
-- KEDA / KarpenterによるGPUワークロードのスケール制御
-- CloudWatchによるログ、メトリクス、コスト監視
+1. Amazon Bedrockがお題を生成する
+2. プレイヤーが最大600文字で言い訳を入力する
+3. 検察官AI・弁護人AI・民衆AIが、それぞれの立場から並列で評価する
+4. 5つの評価軸を集計し、Amazon Bedrockが最終コメントを生成する
+5. 100点満点のスコアとS〜E／EXランクを画面に表示する
 
-最終的には、**Bedrock + OSSモデル on EKS GPU によるハイブリッド型AIゲーム基盤**として成立させます。
+評価軸は、説得力・面白さ・誠実さ・リスク回避力・整合性の5つです。
 
----
+## 公開構成
 
-## 2. コンセプト
+- `/`：ログインなしで閲覧できる作品紹介ページ
+- `/game`：Amazon Cognitoによるログインが必要なゲーム画面
+- Cognitoの自己登録は無効
+- 管理者が作成した1つのデモアカウントだけを使用
+- フロントエンドの公開先は未確定（Cloudflareを候補として検討中）
 
-### キャッチコピー
+ゲームを操作できる利用者を限定し、公開URLから第三者がAmazon Bedrockを無制限に呼び出せない構成にしています。
 
-**その言い訳、AI審判団を納得させられるか。**
+## システム構成
 
-### 基本体験
+![言い訳コロシアムのシステム構成図](./docs/architecture/system-architecture.png)
 
-プレイヤーは、毎回AIが生成する無茶な事件の当事者になります。
-
-例：
-
-- 魔王討伐用の聖剣をフリマアプリに出品してしまった勇者
-- 宇宙船の発射ボタンを押し忘れた新人管制官
-- 王国の謝罪準備金を使い果たした財務大臣
-- タイムマシンで昨日の会議に遅刻した会社員
-- AI市長として市民全員の名前を間違えて発表した行政ロボット
-
-プレイヤーは、その状況に対して自由入力で言い訳を行います。
-
-その後、AI審査員たちがそれぞれの立場からコメントし、議論し、最終的にAI審判が判定します。
-
----
-
-## 3. 目指すゲーム体験
-
-本作が目指すのは、教育的な正解当てゲームではなく、**AIだから成立する即興の言語バトル**です。
-
-面白さの核は以下の3つです。
-
-### 3.1 無茶ぶりの面白さ
-
-AIが毎回、世界線・事件・プレイヤーの立場を生成するため、同じ展開になりにくい構成にします。
-
-「今回はどんな理不尽な状況に放り込まれるのか」という期待感を作ります。
-
-### 3.2 自由入力の面白さ
-
-プレイヤーは選択肢ではなく、自分の言葉で言い訳を入力します。
-
-大喜利、詭弁、謝罪、交渉、泣き落とし、論理武装など、プレイヤーの個性がそのままゲーム結果に反映されます。
-
-### 3.3 AI審査員同士の議論の面白さ
-
-AI審査員は単に採点するだけではありません。
-
-検察官AIが責任を追及し、弁護人AIが擁護し、民衆AIが面白がり、監査官AIが冷静に減点し、審判AIが最終判決を下します。
-
-このAI同士の議論をリアルタイムに表示することで、観戦しているだけでも面白い体験を作ります。
-
----
-
-## 4. 世界観
-
-言い訳コロシアムは、あらゆる世界線から集められた失敗者たちが、自らの失態を弁明する競技場です。
-
-舞台は現代、ファンタジー、SF、異世界、王国、宇宙船、魔法省、AI都市など、毎回ランダムに生成されます。
-
-プレイヤーは「被告」としてコロシアムに立ち、AI審査員団を相手に弁明します。
-
-### 主な登場AI
-
-| AIキャラクター | 役割 |
-| --- | --- |
-| 審判AI | 最終判定を下す |
-| 検察官AI | 矛盾、責任逃れ、リスクを追及する |
-| 弁護人AI | プレイヤーの回答を擁護する |
-| 監査官AI | 論理性、整合性、責任の所在を見る |
-| 民衆AI | 面白さ、共感、人気を評価する |
-| 王様AI / 魔王AI / 市長AI | お題に応じた怒れる当事者として登場する |
-
----
-
-## 5. ゲームループ
-
-### 基本フロー
-
-1. プレイヤーがゲーム開始を押す
-2. AIが世界線、事件、プレイヤーの立場、相手キャラクターを生成する
-3. 必要に応じて、背景画像・キャラ画像・BGM・SEを生成する
-4. プレイヤーが言い訳を入力する
-5. AI審査員が順番にコメントする
-6. AI審査員同士が短い議論を行う
-7. AI審判が最終スコアと判定を出す
-8. TTSで判決を読み上げる
-9. 結果画面を表示する
-10. プレイログとスコアを保存する
-
-### 1プレイ時間
-
-MVPでは、1プレイ3〜5分程度を想定します。
-
-短時間で遊べ、何度もリトライしたくなる体験を目指します。
-
----
-
-## 6. 評価軸
-
-プレイヤーの言い訳は、複数の観点で評価します。
-
-| 評価軸 | 内容 |
-| --- | --- |
-| 説得力 | 相手を納得させる論理があるか |
-| 面白さ | 発想や表現に意外性があるか |
-| 誠実さ | 責任逃れだけでなく、反省や改善意志があるか |
-| リスク回避力 | 状況をさらに悪化させていないか |
-| 感情コントロール | 怒っている相手の感情を和らげられるか |
-| 整合性 | 事件や世界観と矛盾していないか |
-| 逆転力 | 不利な状況をどれだけ巻き返したか |
-
-### 判定ランク例
-
-- S：伝説の弁明者
-- A：奇跡の言い訳
-- B：まあまあ通る
-- C：苦しいが努力は見える
-- D：火に油
-- E：即刻退場
-- EX：芸術的にひどい
-
----
-
-## 7. MVP仕様
-
-### MVPで実装する機能
-
-初期MVPでは、まずテキスト体験を完成させます。
-
-- お題生成
-- プレイヤー回答入力
-- AI審査員3名による評価
-- AI審判による最終判定
-- スコア表示
-- プレイログ保存
-- CloudWatchログ出力
-- GitHub READMEでアーキテクチャ説明
-
-### MVPでは実装しない機能
-
-- 画像生成
-- 音声生成
-- BGM生成
-- 口パク動画
-- 3Dキャラクター
-- マルチプレイ
-- ランキング
-- 課金
-- 本格的なユーザー認証
-
-まずは「テキストだけでも面白い」状態を作ります。
-
-### 実装済みMVP構成
-
-Phase 1 MVPは、Next.jsの画面とAPI Routes、AWS Lambda向けハンドラ、Bedrock呼び出し、DynamoDB保存を同じサービス層で扱う構成です。
-
-ローカル開発では `AI_PROVIDER=mock` と `STORAGE_PROVIDER=memory` を使うことで、AWS認証情報なしでゲーム体験と自動テストを確認できます。AWS環境では `AI_PROVIDER=bedrock`、`STORAGE_PROVIDER=dynamodb`、`GAME_SESSIONS_TABLE`、`BEDROCK_MODEL_ID` を設定します。
-
-初回のローカルMock検証ではサプライチェーン検査の対象を小さくするため、AWS SDK依存はまだ `package.json` に含めていません。Bedrock / DynamoDBの実接続フェーズで、`@aws-sdk/client-bedrock-runtime`、`@aws-sdk/client-dynamodb`、`@aws-sdk/lib-dynamodb` を追加します。
-
-APIは以下の3つです。
-
-- `POST /api/game/start`: お題を生成し、匿名の `sessionId` と `scenario` を返す
-- `POST /api/game/submit`: `sessionId` と言い訳を受け取り、3名のAI審査員評価、最終判定、保存済み結果を返す
-- `GET /api/game/{sessionId}`: 完了済みのプレイログを取得する
-
-AWS公開時のAPIは、Amazon CognitoとAPI Gateway JWT Authorizerで認証必須にします。ポートフォリオ用途では新規登録は開放せず、Cognito User Poolにデモユーザーを手動作成し、応募先・面接官にのみ個別共有します。これにより、API GatewayのURLを知っているだけではLambdaやBedrockを呼べない構成にします。
-
-フロントエンドを公開環境で動かす場合は、以下の公開環境変数を設定します。
-
-- `NEXT_PUBLIC_API_BASE_URL`: SAMデプロイ後に出力されるAPI GatewayのURL
-- `NEXT_PUBLIC_COGNITO_CLIENT_ID`: SAMデプロイ後に出力されるCognito App Client ID
-- `NEXT_PUBLIC_AWS_REGION`: AWSリージョン（例: `ap-northeast-1`）
-
-MVPの固定ルールは以下です。
-
-- AI審査員は、検察官AI、弁護人AI、民衆AIの3名
-- 評価軸は、説得力、面白さ、誠実さ、リスク回避力、整合性の5軸
-- 各評価軸は20点満点、総合スコアは100点満点
-- 1プレイのBedrock呼び出しは、お題生成1回、審査員評価3回、最終判定1回の最大5回を基本にする
-- Step Functions、AppSync Events / WebSocket、SQS FIFO、画像生成、音声生成、認証、ランキングはPhase 2以降に回す
-
-AWS用の最小構成は `infra/template.yaml` にSAMテンプレートとして配置しています。DynamoDBにはGameSession単位で、お題、言い訳、AIコメント、評価軸別スコア、総合判定、実行時刻、30日TTLを保存します。
-
----
-
-## 8. 最終アーキテクチャ方針
-
-本プロジェクトでは、すべてをAWSマネージドサービスだけで構成するのではなく、以下のようなハイブリッド構成を目指します。
-
-### 8.1 テキスト生成・AI対話レイヤー
-
-主にAmazon Bedrockを利用します。
-
-用途：
-
-- 世界線生成
-- 事件生成
-- プレイヤーの立場生成
-- AI審査員の人格生成
-- AI審査員のコメント生成
-- 検察官AIと弁護人AIの議論
-- AI審判の最終判定
-- スコア理由の説明
-- 安全性チェック
-
-### 8.2 リッチメディア生成レイヤー
-
-画像、音声、BGM、動画、3Dなどは、必要に応じてOSSモデルをEKS GPU上で動かします。
-
-用途：
-
-- コロシアム背景画像
-- 事件イラスト
-- AI審査員のキャラクター画像
-- 判決読み上げTTS
-- 観客の歓声・ブーイングSE
-- BGM生成
-- 審査員の口パク動画
-- 結果共有カード生成
-
-### 8.3 ゲーム制御レイヤー
-
-Step Functionsで、ゲーム生成から最終判定までの流れを状態機械として制御します。
-
-例：
-
-1. GenerateWorld
-2. GenerateIncident
-3. GenerateJudges
-4. GenerateAssets
-5. WaitForPlayerAnswer
-6. EvaluateByJudges
-7. DebateBetweenJudges
-8. FinalJudgement
-9. GenerateVoiceAndResultCard
-10. SaveResult
-
-### 8.4 リアルタイム配信レイヤー
-
-AI審査員の発言を順番に生成し、リアルタイムにフロントへ配信します。
-
-構成候補：
-
-- AppSync Events または API Gateway WebSocket
-- SQS FIFO
-- Lambda Workers
-
-SQS FIFOで発言順序を制御し、AI審査員が順番に発言しているように見せます。
-
-### 8.5 状態管理・保存レイヤー
-
-DynamoDBで以下を保存します。
-
-- ゲームセッション
-- 世界線
-- 事件内容
-- プレイヤー回答
-- AI審査員コメント
-- 議論ログ
-- スコア
-- 判定結果
-- 生成アセットのS3パス
-
-S3では以下を保存します。
-
-- 生成画像
-- TTS音声
-- BGM / SE
-- 結果共有カード
-- 長期保存用ログ
-
----
-
-## 9. アーキテクチャ概要
+処理の基本経路は次のとおりです。
 
 ```text
-[Frontend: Next.js / React]
-        |
-        v
-[API Gateway / AppSync]
-        |
-        +-----------------------------+
-        |                             |
-        v                             v
-[REST操作レーン]                 [リアルタイム議論レーン]
-Lambda                           AppSync Events / WebSocket
-Step Functions                   SQS FIFO
-DynamoDB                         Lambda Workers
-        |                             |
-        v                             v
-[Amazon Bedrock]                 [Amazon Bedrock]
-世界線生成                       AI審査員コメント
-事件生成                         検察・弁護人議論
-審査員人格生成                   審判コメント
-最終判定
-        |
-        v
-[EKS GPU / OSS Models]
-画像生成
-TTS
-BGM / SE
-口パク動画
-3Dキャラ
-        |
-        v
-[S3]
-生成アセット保存
-結果カード保存
-音声・画像・動画保存
-
-[CloudWatch / X-Ray]
-ログ、メトリクス、レイテンシ、エラー率、コスト監視
+ブラウザ
+  ├─ Amazon Cognito（ログイン・JWT発行）
+  └─ Amazon API Gateway（JWT検証・流量制限）
+       └─ AWS Lambda
+            ├─ Amazon Bedrock（お題・審査・最終コメントの生成）
+            ├─ Amazon DynamoDB（セッション・結果・日次利用回数）
+            └─ Amazon CloudWatch Logs（実行ログ）
 ```
 
----
+詳しい図と処理フローは[アーキテクチャ資料](./docs/architecture/README.md)を参照してください。
 
-## 10. モデル利用方針
+## 使用技術
 
-### Bedrockを使う領域
-
-| 用途 | モデル候補 | 理由 |
+| 分類 | 技術 | 役割 |
 | --- | --- | --- |
-| お題生成 | Claude系 | 文章品質と発想力が必要 |
-| 審査員コメント | Claude系 | キャラ性と評価理由の自然さが必要 |
-| 議論生成 | Claude系 | 文脈理解とロールプレイ性能が重要 |
-| 最終判定 | Claude系 | 多面的評価と説明力が必要 |
-| キャラ画像 | Bedrock画像モデル | 運用負荷を抑えて使いやすい |
+| Frontend | Next.js 16 / React 18 / TypeScript | 紹介ページ、ログイン、ゲーム画面 |
+| Authentication | Amazon Cognito | デモアカウントの認証とJWT発行 |
+| API | Amazon API Gateway HTTP API | JWT検証、API受付、流量制限 |
+| Compute | AWS Lambda / Node.js 24 | ゲーム開始、審査、結果取得 |
+| Generative AI | Amazon Bedrock / Claude Haiku 4.5 | お題、審査コメント、最終コメントの生成 |
+| Database | Amazon DynamoDB | ゲームデータと日次利用回数の保存 |
+| Monitoring | Amazon CloudWatch Logs | Lambdaの実行ログ保存 |
+| Infrastructure as Code | AWS SAM / AWS CloudFormation | AWSリソースの定義とデプロイ |
+| Test | Vitest | ゲーム処理、API、保存処理、利用回数制限のテスト |
 
-### OSS on EKS GPUを使う領域
+役割の詳細は[技術スタック](./docs/architecture/TECH_STACK.md)にまとめています。
 
-| 用途 | モデル候補 | 理由 |
-| --- | --- | --- |
-| 背景画像 | FLUX系 / Stable Diffusion系 | コストと生成自由度 |
-| キャラ画像 | Stable Diffusion系 | 審査員キャラの量産に向く |
-| TTS | 日本語TTS系OSSモデル | キャラ性のある音声を作りたい |
-| BGM / SE | 音楽生成OSSモデル | 演出を強化できる |
-| 口パク動画 | MuseTalk系 | 審査員発言の演出に使える |
-| 3Dキャラ | Hunyuan3D系 | 将来的なリッチ化に使える |
+## セキュリティ・料金対策
 
----
+- Cognito User Poolは管理者によるユーザー作成だけを許可
+- API Gatewayの全ゲームAPIにJWT Authorizerを設定
+- API Gatewayは1秒あたり2リクエスト、バースト5に制限
+- 共有デモアカウントは日本時間の1日あたり20ゲームまで
+- 言い訳の入力は最大600文字
+- DynamoDBはオンデマンド課金
+- ゲームデータは作成から24時間後にTTLで自動削除
+- CloudWatch Logsの保持期間は7日
+- 生成AIのJSONが不正な場合だけ1回再試行
+- 1ゲームのBedrock呼び出しは通常5回、再試行を含む最大10回
 
-## 11. スケール・コスト最適化方針
+AWS Budgetsの通知はAWSアカウント側で設定し、想定外の利用料金を検知できるようにしています。
 
-AIゲームは、通常時はアクセスが少なく、デモ時や共有時に一時的にアクセスが増える可能性があります。
+## ローカルで確認する
 
-そのため、アイドル時コストを抑える設計を重視します。
+### 必要なもの
 
-### サーバレス部分
+- Node.js 24
+- npm
 
-- Lambda、DynamoDB、API Gateway、Step Functionsを中心に従量課金で構成する
-- 低アクセス時の固定費を抑える
-- CloudWatchでエラー率、レイテンシ、実行回数を監視する
+### 起動手順
 
-### GPU部分
+```bash
+npm install
+```
 
-- EKS GPUノードは常時稼働させない
-- KEDAでキューやメトリクスに応じてPodを0からスケールさせる
-- Karpenterで必要なGPUノードを動的に調達する
-- アイドル時はPodとGPUノードを縮退させる
-- 画像・音声・動画生成は非同期処理にして、ユーザー待ち時間を制御する
+`.env.example` を `.env.local` にコピーします。初期値はMock AIとメモリ保存なので、AWS認証情報や利用料金なしで確認できます。
 
-### Bedrockコスト対策
+```bash
+npm run dev
+```
 
-- 1プレイあたりのAI呼び出し回数に上限を設ける
-- 審査員数をMVPでは3名に制限する
-- プロンプトテンプレートを短く保つ
-- 必要に応じて軽量モデルと高品質モデルを使い分ける
-- トークン数、失敗率、平均応答時間を記録する
+[http://localhost:3000](http://localhost:3000)をブラウザで開きます。
 
----
+AWSへ接続して確認する場合は、SAMデプロイ後のAPI URL、Cognito App Client ID、AWSリージョンを公開環境変数へ設定します。
 
-## 12. 開発ロードマップ
+| 環境変数 | 用途 |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | API GatewayのURL |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Cognito App Client ID |
+| `NEXT_PUBLIC_AWS_REGION` | Cognitoを作成したAWSリージョン |
+| `AI_PROVIDER` | `mock` または `bedrock` |
+| `STORAGE_PROVIDER` | `memory` または `dynamodb` |
+| `BEDROCK_MODEL_ID` | Amazon Bedrockで使用するモデルID |
+| `GAME_SESSIONS_TABLE` | DynamoDBテーブル名 |
+| `PLAY_LOG_TTL_DAYS` | ゲームデータの保持日数 |
+| `PLAY_LIMIT_PER_DAY` | 1ユーザーの日次ゲーム上限 |
 
-### Phase 1：テキストMVP
+`.env.local`、AWS認証情報、パスワードなどの秘密情報はGitへコミットしません。
 
-目的：1人で3分遊べる状態を作る。
+## 検証コマンド
 
-構成：
+```bash
+npm run lint
+npm test
+npm run build
+npm run sam:validate
+npm run sam:build
+```
 
-- Next.js
-- API Gateway + Lambda
-- Amazon Bedrock
-- DynamoDB
-- CloudWatch
+現在の自動テストは5ファイル・15件です。Amazon BedrockとDynamoDBはMockを使用し、通常のテストでAWS料金が発生しないようにしています。
 
-機能：
+## AWSへデプロイする
 
-- お題生成
-- プレイヤー回答
-- AI審査員3名の評価
-- AI審判の最終判定
-- スコア保存
+AWS CLIとAWS SAM CLIを設定したうえで、次を実行します。
 
-### Phase 2：Step Functions化
+```bash
+npm run sam:validate
+npm run sam:build
+sam deploy --guided
+```
 
-目的：ゲーム進行をワークフローとして管理する。
+初回デプロイでは主に次の値を指定します。
 
-追加要素：
+- `BedrockModelId`：使用するAmazon BedrockのモデルID
+- `FrontendOrigin`：APIの呼び出しを許可するフロントエンドURL
 
-- Step Functions
-- 生成、評価、議論、判定の状態管理
-- エラー時リトライ
-- タイムアウト制御
-- 実行履歴の可視化
+デプロイ後は、SAMの出力値にあるAPI URL、Cognito App Client ID、AWSリージョンをフロントエンドへ設定します。Cognitoのユーザーは管理者が作成し、自己登録は開放しません。
 
-### Phase 3：リアルタイム議論
+## ディレクトリ構成
 
-目的：AI審査員がその場で議論しているような体験を作る。
-
-追加要素：
-
-- AppSync Events または WebSocket API
-- SQS FIFO
-- 発言順序制御
-- AI検察官、AI弁護人、AI民衆、AI審判の会話表示
-
-### Phase 4：リッチメディア生成
-
-目的：PDFで示されていたような、テキスト以外の生成AI体験に拡張する。
-
-追加要素：
-
-- EKS Auto Mode
-- Karpenter
-- KEDA
-- OSS画像生成モデル
-- OSS TTSモデル
-- S3アセット保存
-- 判定読み上げ
-- 結果カード生成
-
-### Phase 5：ゲーム性強化
-
-追加要素：
-
-- ランク・称号
-- ステージ制
-- 審査員セット選択
-- 大喜利モード
-- ガチ弁明モード
-- AI対戦モード
-- ランキング
-- 結果共有
-
-### Phase 6：ポートフォリオ整備
-
-成果物：
-
-- GitHub README
-- アーキテクチャ図
-- ER図 / DynamoDB設計
-- Step Functions定義
-- デモ動画
-- コスト試算
-- 監視メトリクス画面
-- 技術選定理由
-- 今後の改善点
-
----
-
-## 13. ポートフォリオとしてのアピールポイント
-
-本プロジェクトでは、以下を転職時に説明できます。
-
-### 13.1 生成AIアプリ設計
-
-単なるチャットアプリではなく、複数AIエージェントが役割を持って評価・議論するゲームを設計したことを示せます。
-
-### 13.2 AWSサーバレス設計
-
-API Gateway、Lambda、Step Functions、DynamoDB、S3、CloudWatchを組み合わせて、従量課金中心の構成を設計したことを示せます。
-
-### 13.3 リアルタイム配信設計
-
-SQS FIFOとAppSync EventsまたはWebSocketを組み合わせ、AI審査員の発言を順序制御しながらリアルタイムに表示する構成を設計したことを示せます。
-
-### 13.4 Bedrock + OSSモデルのハイブリッド構成
-
-テキスト生成や評価はBedrock、画像・音声・動画生成はOSSモデル on EKS GPUに分離し、品質・コスト・運用負荷のバランスを取る設計を示せます。
-
-### 13.5 コスト最適化
-
-KEDAとKarpenterを利用し、GPUワークロードを必要時のみ起動する設計を採用したことを示せます。
-
-### 13.6 運用観点
-
-CloudWatchでレイテンシ、エラー率、Bedrock呼び出し回数、トークン数、GPUジョブ数などを監視する設計を示せます。
-
----
-
-## 14. 面接での説明例
-
-Amazon BedrockとAWSサーバレスを利用して、AIが生成する理不尽な状況に対してプレイヤーが言い訳を行い、複数のAI審査員がリアルタイムに議論・評価するゲームを開発しました。
-
-テキスト生成やAI審査員の会話にはBedrockを使い、ゲーム進行はStep Functionsで制御しました。セッションやスコア、会話履歴はDynamoDBに保存し、AI審査員の発言はSQS FIFOで順序制御したうえで、WebSocketまたはAppSync Eventsを使ってフロントにリアルタイム配信する設計です。
-
-また、拡張構成として、TTSや画像生成などのリッチメディア生成はOSSモデルをEKS GPU上で動かし、KEDAとKarpenterで必要時のみGPUリソースを起動する構成を検討しました。
-
-このプロジェクトを通じて、生成AIアプリケーションにおける状態管理、複数AIエージェント設計、リアルタイム配信、コスト最適化、監視設計を学習しました。
-
----
-
-## 15. 成功条件
-
-MVP時点の成功条件は以下とします。
-
-- 1プレイ3〜5分で完結する
-- テキストだけでも面白い
-- AI審査員のコメントが毎回少し笑える
-- プレイヤーがもう一度遊びたくなる
-- GitHub READMEで構成を説明できる
-- AWS構成図を提示できる
-- Bedrock、Lambda、DynamoDB、Step Functionsの利用理由を説明できる
-- 将来的なEKS GPU / OSSモデル連携まで拡張方針を語れる
-
----
-
-## 16. 今後の検討事項
-
-- MVPではBedrockのみで進めるか、最初からTTSを入れるか
-- TTSはAmazon Pollyを使うか、OSS TTS on EKS GPUを使うか
-- 画像生成をBedrock画像モデルに寄せるか、OSSモデルに寄せるか
-- AppSync EventsとAPI Gateway WebSocketのどちらを採用するか
-- DynamoDBのテーブル設計
-- Step Functionsの粒度
-- AI審査員の人数
-- 1プレイあたりのBedrock呼び出し回数
-- コスト上限の設定
-- 不適切なお題生成を防ぐガードレール
-- 結果共有機能の有無
-
----
-
-## 17. まとめ
-
-言い訳コロシアムは、AIが生成する理不尽な状況に対して、プレイヤーが自由入力で弁明し、複数のAI審査員がリアルタイムに評価・議論するAI対話型ゲームです。
-
-初期MVPでは、Amazon Bedrock、Lambda、DynamoDB、Step Functionsを中心にテキストベースのゲーム体験を作ります。
-
-その後、AppSync Events / WebSocketとSQS FIFOによるリアルタイム議論、EKS GPU上のOSSモデルによるTTS・画像・BGM・動画生成へ拡張します。
-
-最終的には、BedrockとOSS生成モデルを組み合わせたハイブリッド型AIゲームアーキテクチャとして、AWS学習および転職用ポートフォリオの両方で価値のあるプロジェクトを目指します。
+```text
+app/                    Next.jsの紹介ページ・ゲーム画面・ローカルAPI
+src/                    ゲーム処理、AWS接続、Lambdaハンドラ
+infra/template.yaml     AWS SAMテンプレート
+tests/                  Vitestの自動テスト
+docs/architecture/      システム構成図・処理フロー・技術スタック
+scripts/                構成図の生成スクリプト
+```
+
+## 関連資料
+
+- [アーキテクチャ資料](./docs/architecture/README.md)
+- [技術スタック](./docs/architecture/TECH_STACK.md)
+- [PDF作成用メモ](./docs/portfolio-pdf-materials.md)
+- [AWS SAMテンプレート](./infra/template.yaml)
