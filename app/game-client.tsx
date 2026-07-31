@@ -38,7 +38,7 @@ function apiUrl(path: string) {
 }
 
 export function GameClient() {
-  const [authReady, setAuthReady] = useState(!authEnabled);
+  const [authReady, setAuthReady] = useState(true);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -58,8 +58,14 @@ export function GameClient() {
       return;
     }
 
-    setAuthSession(loadAuthSession());
-    setAuthReady(true);
+    try {
+      setAuthSession(loadAuthSession());
+    } catch {
+      setAuthSession(null);
+      setError("ログイン状態を確認できませんでした。もう一度ログインしてください。");
+    } finally {
+      setAuthReady(true);
+    }
   }, []);
 
   useEffect(() => {

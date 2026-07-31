@@ -42,7 +42,7 @@ AWSとAmazon Bedrockを実際に使って生成AIアプリケーションの処�
             └─ Amazon CloudWatch Logs（実行ログ）
 ```
 
-詳しい図と処理フローは[アーキテクチャ資料](./docs/architecture/README.md)を参照してください。
+詳しい構成は[アーキテクチャ資料](./docs/architecture/README.md)を参照してください。現在の実装に対応したシステム構成図と、通常成功経路に限定した1ゲームの処理フロー図を掲載しています。
 
 ## 使用技術
 
@@ -148,8 +148,7 @@ app/                    Next.jsの紹介ページ・ゲーム画面・ローカ�
 src/                    ゲーム処理、AWS接続、Lambdaハンドラ
 infra/template.yaml     AWS SAMテンプレート
 tests/                  Vitestの自動テスト
-docs/architecture/      システム構成図・処理フロー・技術スタック
-scripts/                構成図の生成スクリプト
+docs/architecture/      アーキテクチャ資料・技術スタック
 ```
 
 ## 関連資料

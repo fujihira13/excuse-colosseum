@@ -1,49 +1,57 @@
-sequenceDiagram
-    autonumber
-    actor User as 利用者
-    participant Frontend as Next.js
-    participant Cognito as Amazon Cognito
-    participant Api as API Gateway
-    participant Lambda as AWS Lambda
-    participant Bedrock as Amazon Bedrock
-    participant DynamoDB as Amazon DynamoDB
+flowchart TD
+    begin(["ログイン済みの利用者"])
 
-    User->>Frontend: メールアドレス・パスワードを入力
-    Frontend->>Cognito: ログイン要求
-    Cognito-->>Frontend: JWTを発行
-
-    User->>Frontend: ゲーム開始
-    Frontend->>Api: POST /api/game/start（JWT付き）
-    Api->>Api: JWTを検証
-    Api->>Lambda: StartGameFunction
-    Lambda->>DynamoDB: 日本時間の日次利用回数を更新
-    DynamoDB-->>Lambda: 20回未満なら継続
-    Lambda->>Bedrock: お題を生成
-    Bedrock-->>Lambda: お題JSON
-    Lambda->>DynamoDB: セッションを保存（TTL 24時間）
-    Lambda-->>Frontend: sessionId・お題
-
-    User->>Frontend: 最大600文字の言い訳を送信
-    Frontend->>Api: POST /api/game/submit（JWT付き）
-    Api->>Api: JWTを検証
-    Api->>Lambda: SubmitExcuseFunction
-    Lambda->>DynamoDB: セッションを取得
-
-    par 検察官AI
-        Lambda->>Bedrock: 言い訳を審査
-        Bedrock-->>Lambda: 評価・コメント
-    and 弁護人AI
-        Lambda->>Bedrock: 言い訳を審査
-        Bedrock-->>Lambda: 評価・コメント
-    and 民衆AI
-        Lambda->>Bedrock: 言い訳を審査
-        Bedrock-->>Lambda: 評価・コメント
+    subgraph startPhase["1. お題を受け取る"]
+        requestStart["利用者が「お題を受ける」を押す"]
+        callStart["ブラウザが開始APIを呼ぶ"]
+        authorizeStart["API GatewayがJWTを検証し開始処理へ渡す"]
+        consumeLimit["利用回数をDynamoDBで確認・更新"]
+        generateScenario["Amazon Bedrockがお題を生成"]
+        saveStart["開始状態をDynamoDBへ保存"]
+        showScenario["ブラウザがお題を表示"]
     end
 
-    Lambda->>Lambda: 3名の5軸スコアを集計
-    Lambda->>Bedrock: 最終コメントを生成
-    Bedrock-->>Lambda: 総評・改善ポイント
-    Lambda->>DynamoDB: 完了結果を保存
-    Lambda-->>Frontend: スコア・コメント・最終判定
+    enterExcuse["利用者が1〜600文字の言い訳を入力"]
 
-    Note over Lambda,Bedrock: Bedrock呼び出しは通常5回
+    subgraph submitPhase["2. 言い訳を採点する"]
+        callSubmit["ブラウザが採点APIを呼ぶ"]
+        authorizeSubmit["API GatewayがJWTを検証し採点処理へ渡す"]
+        loadSession["入力を検証しセッションを取得"]
+        judgeBatch["Amazon Bedrockが3人のAI審査員を並列評価"]
+        aggregateScores["Lambdaが5軸を集計し総合点・ランクを算出"]
+        generateFinal["Amazon Bedrockが最終コメントと改善点を生成"]
+        saveResult["完了結果をDynamoDBへ保存"]
+    end
+
+    showResult(["ブラウザにスコア・ランク・審査コメントを表示"])
+
+    begin --> requestStart
+    requestStart --> callStart
+    callStart --> authorizeStart
+    authorizeStart --> consumeLimit
+    consumeLimit --> generateScenario
+    generateScenario --> saveStart
+    saveStart --> showScenario
+    showScenario --> enterExcuse
+    enterExcuse --> callSubmit
+    callSubmit --> authorizeSubmit
+    authorizeSubmit --> loadSession
+    loadSession --> judgeBatch
+    judgeBatch --> aggregateScores
+    aggregateScores --> generateFinal
+    generateFinal --> saveResult
+    saveResult --> showResult
+
+    classDef user fill:#EFF6FF,stroke:#3B82F6,color:#1E3A8A,stroke-width:2px;
+    classDef browser fill:#F8FAFC,stroke:#475569,color:#0F172A,stroke-width:2px;
+    classDef gateway fill:#FDF2F8,stroke:#E7157B,color:#831843,stroke-width:2px;
+    classDef lambda fill:#FFF7ED,stroke:#ED7100,color:#7C2D12,stroke-width:2px;
+    classDef bedrock fill:#ECFDF5,stroke:#01A88D,color:#065F46,stroke-width:2px;
+    classDef dynamo fill:#FDF4FF,stroke:#C925D1,color:#701A75,stroke-width:2px;
+
+    class begin,requestStart,enterExcuse,showResult user;
+    class callStart,showScenario,callSubmit browser;
+    class authorizeStart,authorizeSubmit gateway;
+    class consumeLimit,loadSession,aggregateScores lambda;
+    class generateScenario,judgeBatch,generateFinal bedrock;
+    class saveStart,saveResult dynamo;

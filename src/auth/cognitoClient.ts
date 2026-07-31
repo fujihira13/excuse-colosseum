@@ -78,16 +78,20 @@ export async function signInWithCognito(email: string, password: string): Promis
 }
 
 export function saveAuthSession(session: AuthSession) {
-  window.localStorage.setItem(authStorageKey, JSON.stringify(session));
+  try {
+    window.localStorage.setItem(authStorageKey, JSON.stringify(session));
+  } catch {
+    // Browser storage may be unavailable. Keep the session in React memory.
+  }
 }
 
 export function loadAuthSession(): AuthSession | null {
-  const raw = window.localStorage.getItem(authStorageKey);
-  if (!raw) {
-    return null;
-  }
-
   try {
+    const raw = window.localStorage.getItem(authStorageKey);
+    if (!raw) {
+      return null;
+    }
+
     const session = JSON.parse(raw) as AuthSession;
     if (!session.idToken || session.expiresAt <= Date.now()) {
       clearAuthSession();
@@ -101,5 +105,9 @@ export function loadAuthSession(): AuthSession | null {
 }
 
 export function clearAuthSession() {
-  window.localStorage.removeItem(authStorageKey);
+  try {
+    window.localStorage.removeItem(authStorageKey);
+  } catch {
+    // Browser storage may be unavailable.
+  }
 }

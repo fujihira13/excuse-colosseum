@@ -4,72 +4,32 @@
 
 ## システム構成図
 
-Next.jsのフロントエンドから、AWSの認証・API・Lambda・生成AI・データ保存・ログへ接続する全体像です。フロントエンドの公開ホスティング先は未確定です。
-
 ![言い訳コロシアムのシステム構成図](./system-architecture.png)
 
-- [PNG](./system-architecture.png)：READMEやポートフォリオへの掲載用
-- [SVG](./system-architecture.svg)：拡大表示用
-- [draw.io](./system-architecture.drawio)：diagrams.netで編集するための元データ
+[編集可能なdraw.ioファイル](./system-architecture.drawio)
+
+現在の実装に存在する、Next.jsのフロントエンド、Cognito、API Gateway、3つのLambda、Bedrock、DynamoDB、CloudWatch Logsだけを記載しています。
+
+- ブラウザはCognitoへ直接ログインし、IDトークンを取得します。
+- ブラウザは取得したIDトークンを付けて、API Gatewayを直接呼び出します。
+- CognitoとAPI Gatewayの破線は「JWT発行元として信頼する」という論理関係です。API通信がCognitoを経由する意味ではありません。
+- API GatewayからLambdaへの線は3つのAPIルートをまとめたものです。個別の呼び出し順序は処理フロー図に分離しています。
+- 結果取得APIは実装済みですが、現在のゲーム画面では使用していないため、GetGameFunctionの説明内に明記しています。
+- LambdaからBedrock、DynamoDB、CloudWatch Logsへの線も、3関数からの接続をまとめて示しています。
+- フロントエンドの公開ホスティング先は未確定です。
 
 ## 1ゲームの処理フロー
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 利用者
-    participant Frontend as Next.js
-    participant Cognito as Amazon Cognito
-    participant Api as API Gateway
-    participant Lambda as AWS Lambda
-    participant Bedrock as Amazon Bedrock
-    participant DynamoDB as Amazon DynamoDB
+<img src="./game-flow.svg" alt="言い訳コロシアムの1ゲーム処理フロー" width="420">
 
-    User->>Frontend: メールアドレス・パスワードを入力
-    Frontend->>Cognito: ログイン要求
-    Cognito-->>Frontend: JWTを発行
+[Mermaidソース](./game-flow.mmd)
 
-    User->>Frontend: ゲーム開始
-    Frontend->>Api: POST /api/game/start（JWT付き）
-    Api->>Api: JWTを検証
-    Api->>Lambda: StartGameFunction
-    Lambda->>DynamoDB: 日本時間の日次利用回数を更新
-    DynamoDB-->>Lambda: 20回未満なら継続
-    Lambda->>Bedrock: お題を生成
-    Bedrock-->>Lambda: お題JSON
-    Lambda->>DynamoDB: セッションを保存（TTL 24時間）
-    Lambda-->>Frontend: sessionId・お題
+ログイン後の「お題を受ける」から結果表示までを、次の2段階に分けています。
 
-    User->>Frontend: 最大600文字の言い訳を送信
-    Frontend->>Api: POST /api/game/submit（JWT付き）
-    Api->>Api: JWTを検証
-    Api->>Lambda: SubmitExcuseFunction
-    Lambda->>DynamoDB: セッションを取得
+1. 開始APIで利用回数を確認し、Bedrockでお題を生成してDynamoDBへ開始状態を保存する
+2. 採点APIでセッションを取得し、3人のAI審査、集計、最終コメント生成を行って結果を保存する
 
-    par 検察官AI
-        Lambda->>Bedrock: 言い訳を審査
-        Bedrock-->>Lambda: 評価・コメント
-    and 弁護人AI
-        Lambda->>Bedrock: 言い訳を審査
-        Bedrock-->>Lambda: 評価・コメント
-    and 民衆AI
-        Lambda->>Bedrock: 言い訳を審査
-        Bedrock-->>Lambda: 評価・コメント
-    end
-
-    Lambda->>Lambda: 3名の5軸スコアを集計
-    Lambda->>Bedrock: 最終コメントを生成
-    Bedrock-->>Lambda: 総評・改善ポイント
-    Lambda->>DynamoDB: 完了結果を保存
-    Lambda-->>Frontend: スコア・コメント・最終判定
-
-    Note over Lambda,Bedrock: Bedrock呼び出しは通常5回
-```
-
-- [Mermaidソース](./game-flow.mmd)
-- [詳細フロー PNG](./game-flow.png)
-- [詳細フロー SVG](./game-flow.svg)
-- [詳細フロー draw.io](./game-flow.drawio)
+この図は通常の成功経路を説明するためのものです。認証失敗、利用上限超過、入力エラー、AWSサービスの障害、現在の画面で未使用の結果取得APIは混在させていません。
 
 ## AWS SAMテンプレート
 
@@ -87,10 +47,6 @@ sequenceDiagram
 
 各技術の役割は[技術スタック一覧](./TECH_STACK.md)にまとめています。
 
-## 構成図を更新する
+## ロゴ・商標
 
-```bash
-npm run architecture:generate
-```
-
-生成元は `scripts/generate-architecture-diagrams.mjs` です。PNG・SVG・draw.ioを同時に更新します。
+Next.jsのブランド表示は[Vercel公式ブランド素材](https://vercel.com/geist/brands)を参照しています。Next.jsおよびNext.jsロゴはVercel Inc.の商標です。

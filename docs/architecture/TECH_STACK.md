@@ -28,7 +28,6 @@
 
 ## 資料との対応
 
-- サービス全体：`system-architecture.png`
-- 1ゲームの処理：`game-flow.mmd`
-- 詳細なレーン図：`game-flow.png`
+- [システム構成図](./system-architecture.drawio)：現在の実装と接続関係を反映
+- [1ゲームの処理フロー図](./game-flow.mmd)：通常の成功経路に限定
 - AWSリソース定義：`infra/template.yaml`
