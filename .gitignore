@@ -14,3 +14,12 @@ coverage/
 tsconfig.tsbuildinfo
 .env
 .env*.local
+
+# Local logs and temporary working files
+*.log
+tmp/
+*.bkp
+/({id
+/docs/diagram-skill-*/
+/docs/diagrams-*/
+/docs/architecture/preview-*
